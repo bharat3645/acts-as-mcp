@@ -44,6 +44,51 @@ you listed.
   unexpected exceptions are audited with class+message but reach the
   client only as a generic "internal error" (no stack/detail leakage).
 
+## Example: the real wire protocol
+
+`examples/plain_tools.rb` registers two tools by hand (no ActiveRecord,
+no Rails) and drives a real `initialize` -> `tools/list` -> `tools/call`
+sequence against the real `Server` class. Real, unedited output
+(`ruby -Ilib examples/plain_tools.rb`):
+
+```
+--> {"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+<-- {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"acts_as_mcp","version":"0.1.0"}}}
+
+--> {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"weather_lookup","arguments":{"city":"Austin"}}}
+<-- {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\"city\":\"Austin\",\"condition\":\"sunny\",\"temp_f\":72}"}],"isError":false}}
+
+# Calling divide with b: 0 - a real ToolError, not a crash:
+--> {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"divide","arguments":{"a":10,"b":0}}}
+<-- {"jsonrpc":"2.0","id":4,"result":{"content":[{"type":"text","text":"cannot divide by zero"}],"isError":true}}
+```
+
+`examples/activerecord_model.rb` is the same idea for the `expose:`
+feature - real output showing `internal_notes` never appearing anywhere,
+because it was never listed in `expose:` (needs `gem install activerecord
+sqlite3`, dev-only - the gem itself stays zero-dependency):
+
+```
+# article_list - note internal_notes never appears, it was never exposed:
+--> {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"article_list","arguments":{"limit":10}}}
+<-- {"jsonrpc":"2.0","id":2,"result":{"content":[{"type":"text","text":"[{\"id\":1,\"title\":\"Shipping idempotent_rack\",\"body\":\"Idempotency-Key middleware for Rack.\"},{\"id\":2,\"title\":\"Shipping modelgate\",\"body\":\"A multi-provider LLM gateway.\"}]"}],"isError":false}}
+```
+
+## Benchmark: per-request dispatch overhead
+
+`bench/throughput_bench.rb` times real `tools/call` round trips through
+`Server#call` - in-process JSON-RPC dispatch overhead (parse -> route ->
+authorize -> invoke -> serialize), not network/HTTP latency, which
+depends on whatever Rack server you mount this behind and is outside
+this gem's control to measure honestly. Real output, captured 2026-07-21,
+Ruby 3.3, 5000 calls:
+
+```
+acts_as_mcp in-process tools/call dispatch: 5000 calls
+  mean=0.0051ms  median=0.0040ms  p95=0.0045ms  p99=0.0245ms  min=0.0038ms  max=0.4263ms
+  throughput: ~196062 calls/sec (single-threaded, in-process)
+```
+
 ## Protocol surface (v0.1)
 
 `initialize` (protocol `2025-06-18`), `notifications/initialized` (202),
@@ -56,6 +101,10 @@ stream, no sessions — the spec's plain-JSON response mode.
   tools; runs with zero gems (`ruby -Ilib -Itest test/server_core_test.rb`).
 - `test/model_test.rb` — ActiveRecord integration (sqlite3 in-memory):
   exposure filtering, pagination, clamping, not-found semantics.
+- `examples/` and `bench/` run for real in CI too (not just committed as
+  static text) - `examples/plain_tools.rb` and `bench/throughput_bench.rb`
+  in the zero-gems job, `examples/activerecord_model.rb` in the
+  ActiveRecord job.
 
 ## Roadmap
 

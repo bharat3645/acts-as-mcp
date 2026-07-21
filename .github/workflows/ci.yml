@@ -21,6 +21,8 @@ jobs:
           bundler-cache: true
       - name: Full suite (server core + ActiveRecord integration)
         run: bundle exec rake test
+      - name: ActiveRecord example runs for real
+        run: bundle exec ruby -Ilib examples/activerecord_model.rb
 
   core-no-activerecord:
     runs-on: ubuntu-latest
@@ -31,6 +33,10 @@ jobs:
           ruby-version: '3.3'
       - name: Core suite with no gems installed (zero-dependency claim)
         run: ruby -Ilib -Itest test/server_core_test.rb
+      - name: Plain (no-AR) example runs for real, with zero gems installed
+        run: ruby -Ilib examples/plain_tools.rb
+      - name: Throughput benchmark runs for real, with zero gems installed
+        run: ruby -Ilib bench/throughput_bench.rb 2000
 
   gem:
     runs-on: ubuntu-latest
