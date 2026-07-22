@@ -1,5 +1,7 @@
 # acts_as_mcp
 
+[![CI](https://github.com/bharat3645/acts-as-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/bharat3645/acts-as-mcp/actions/workflows/ci.yml)
+
 Expose a Rails app as a **policy-aware, read-only MCP server** — serve your
 app *to* agents safely, instead of building agents in Ruby.
 
