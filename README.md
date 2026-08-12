@@ -76,6 +76,39 @@ sqlite3`, dev-only - the gem itself stays zero-dependency):
 <-- {"jsonrpc":"2.0","id":2,"result":{"content":[{"type":"text","text":"[{\"id\":1,\"title\":\"Shipping idempotent_rack\",\"body\":\"Idempotency-Key middleware for Rack.\"},{\"id\":2,\"title\":\"Shipping modelgate\",\"body\":\"A multi-provider LLM gateway.\"}]"}],"isError":false}}
 ```
 
+## Filtering `_list` with `where:`
+
+`_list` can take an optional `where:` allowlist of attributes the caller
+may filter on (exact match only). Same discipline as `expose:` - nothing
+is filterable by default, and a filterable attribute must **also** be
+exposed (filtering on a hidden column would let a model probe its value
+indirectly via presence/absence of matches, even though the value itself
+never appears in a response):
+
+```ruby
+Article.acts_as_mcp(expose: %i[id title body], where: %i[title])
+```
+
+Real captured output - filtering works on the allowlisted attribute,
+and is rejected (as a `ToolError`, not a crash or a silent no-op) for
+anything not on the list, even a real column that happens to exist:
+
+```
+# article_list filtered by an allowlisted `where:` attribute (exact match):
+--> {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"article_list","arguments":{"where":{"title":"Shipping modelgate"}}}}
+<-- {"jsonrpc":"2.0","id":5,"result":{"content":[{"type":"text","text":"[{\"id\":2,\"title\":\"Shipping modelgate\",\"body\":\"A multi-provider LLM gateway.\"}]"}],"isError":false}}
+
+# filtering on internal_notes is rejected - it's not in where:, even though it exists:
+--> {"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"article_list","arguments":{"where":{"internal_notes":"unpublished draft, do not expose"}}}}
+<-- {"jsonrpc":"2.0","id":6,"result":{"content":[{"type":"text","text":"where: \"internal_notes\" is not a filterable attribute (allowed: title)"}],"isError":true}}
+```
+
+Filter values must be scalars (string/number/bool/null) - `where:` builds
+an ActiveRecord `.where(hash)` clause (parameterized, not string-built),
+never raw SQL, so there's no injection surface; non-scalar values (e.g. a
+nested object trying to smuggle an operator) are rejected before they
+ever reach ActiveRecord.
+
 ## Benchmark: per-request dispatch overhead
 
 `bench/throughput_bench.rb` times real `tools/call` round trips through
@@ -110,9 +143,9 @@ stream, no sessions — the spec's plain-JSON response mode.
 
 ## Roadmap
 
-- v0.2: opt-in write tools with per-tool policies, AR-backed audit-log
-  table + migration generator, Rails engine generators, `where:` filters
-  with an allowlist.
+- ~~`where:` filters with an allowlist~~ - shipped 0.2.0, see above.
+- v0.3: opt-in write tools with per-tool policies, AR-backed audit-log
+  table + migration generator, Rails engine generators.
 - Rails engine class exists today but is a thin shim; mounting the Rack
   app is the supported path.
 
