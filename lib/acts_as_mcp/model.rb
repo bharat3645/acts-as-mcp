@@ -11,10 +11,26 @@ module ActsAsMcp
   # Read-only by design in v0.1: only `<model>_get` and `<model>_list` exist.
   # Only the attributes named in `expose:` ever leave the process.
   module Model
-    def acts_as_mcp(expose:, description: nil, find: true, list: true)
+    # where: is an explicit allowlist of attributes the generated `_list`
+    # tool may be filtered on (exact match only). Same "explicit, no
+    # default-open surface" discipline as expose: - every filterable
+    # attribute must ALSO be in expose: (you can only search on a column
+    # the caller can already see; filtering on a hidden column would let a
+    # model probe its value indirectly via presence/absence of matches,
+    # a real side channel even though the value itself never appears in a
+    # response).
+    def acts_as_mcp(expose:, description: nil, find: true, list: true, where: [])
       model = self
       exposed = Array(expose).map(&:to_s)
       raise ArgumentError, "acts_as_mcp requires expose: [...attribute names]" if exposed.empty?
+
+      filterable = Array(where).map(&:to_s)
+      leaked = filterable - exposed
+      unless leaked.empty?
+        raise ArgumentError,
+              "acts_as_mcp where: #{leaked.inspect} must also be listed in expose: " \
+              "(filtering on a non-exposed attribute is a side channel)"
+      end
 
       base = ActsAsMcp.tool_base_name(model.name)
 
@@ -39,20 +55,54 @@ module ActsAsMcp
       end
 
       if list
+        list_properties = {
+          "limit" => { "type" => "integer", "minimum" => 1, "maximum" => 100 },
+          "offset" => { "type" => "integer", "minimum" => 0 },
+        }
+        unless filterable.empty?
+          list_properties["where"] = {
+            "type" => "object",
+            "description" => "Exact-match filters. Allowed keys: #{filterable.join(", ")}.",
+            "additionalProperties" => false,
+            "properties" => filterable.to_h { |f| [f, { "type" => %w[string integer number boolean null] }] },
+          }
+        end
+
         ActsAsMcp.registry.register(Tool.new(
           name: "#{base}_list",
-          description: "List #{base} records (read-only, paginated)",
+          description: "List #{base} records (read-only, paginated" \
+                       "#{filterable.empty? ? "" : ", filterable on #{filterable.join(", ")}"})",
           input_schema: {
             "type" => "object",
-            "properties" => {
-              "limit" => { "type" => "integer", "minimum" => 1, "maximum" => 100 },
-              "offset" => { "type" => "integer", "minimum" => 0 },
-            },
+            "properties" => list_properties,
           },
           handler: lambda do |args|
             limit = (args["limit"] || 25).to_i.clamp(1, 100)
             offset = [args["offset"].to_i, 0].max
-            model.order(model.primary_key).limit(limit).offset(offset)
+            scope = model.order(model.primary_key)
+
+            if args.key?("where") && !args["where"].nil?
+              raw = args["where"]
+              raise ToolError, "where: must be an object" unless raw.is_a?(Hash)
+
+              conditions = {}
+              raw.each do |key, value|
+                key = key.to_s
+                unless filterable.include?(key)
+                  raise ToolError, "where: #{key.inspect} is not a filterable attribute " \
+                                    "(allowed: #{filterable.join(", ")})"
+                end
+                unless value.nil? || value.is_a?(String) || value.is_a?(Numeric) ||
+                       value == true || value == false
+                  raise ToolError, "where: #{key.inspect} must be a string/number/bool/null, " \
+                                    "got #{value.class}"
+                end
+                conditions[key] = value
+              end
+              scope = scope.where(conditions) unless conditions.empty?
+            end
+
+            scope.limit(limit).offset(offset)
                  .map { |record| record.attributes.slice(*exposed) }
           end
         ))
