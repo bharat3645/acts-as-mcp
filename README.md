@@ -40,7 +40,9 @@ you listed.
   ```
 
   Denials return `isError` tool content and are audited like every call
-  (tool, arguments, outcome, duration).
+  (tool, arguments, outcome, duration). `audit_sink` can be any callable
+  - `ActsAsMcp::ActiveRecordAuditSink` below is a ready-made one if you'd
+  rather not write `McpAuditLog` yourself.
 - **Expected failures are tool content, not protocol errors** (per MCP
   spec): a missing record is an `isError` result the model can read;
   unexpected exceptions are audited with class+message but reach the
@@ -109,6 +111,53 @@ never raw SQL, so there's no injection surface; non-scalar values (e.g. a
 nested object trying to smuggle an operator) are rejected before they
 ever reach ActiveRecord.
 
+## Persisting audit events with ActiveRecord
+
+`audit_sink` accepts any callable (see Design decisions above); `acts_as_mcp`
+also ships a ready-made ActiveRecord-backed one so you don't have to write
+your own model + migration for the common case:
+
+```
+rails generate acts_as_mcp:audit_log
+rails db:migrate
+```
+
+```ruby
+ActsAsMcp.configure do |c|
+  c.audit_sink = ActsAsMcp::ActiveRecordAuditSink.new
+end
+```
+
+Every call - success, a `ToolError`, or an `authorize` denial - becomes one
+`ActsAsMcp::AuditLog` row (`tool`, `args` as JSON, `ok`, `duration_ms`,
+`error`, `occurred_at`). Same rule as everywhere else in this gem: the sink
+can never take the endpoint down, so a persistence failure (table not
+migrated yet, DB unreachable) is swallowed, never raised into the request.
+
+Real output from `examples/activerecord_model.rb` (`bundle exec ruby -Ilib
+examples/activerecord_model.rb`), captured 2026-08-13 - five calls from
+the transcript above, including the two that returned `isError`, each
+landing as a real row:
+
+```
+# every call above was persisted by ActsAsMcp::ActiveRecordAuditSink (rails generate acts_as_mcp:audit_log for the migration) - real rows, not a mock:
+  #1 tool="article_list" ok=true args={"limit":10} duration_ms=4 error=nil
+  #2 tool="article_get" ok=true args={"id":1} duration_ms=1 error=nil
+  #3 tool="article_get" ok=false args={"id":999999} duration_ms=0 error="article 999999 not found"
+  #4 tool="article_list" ok=true args={"where":{"title":"Shipping modelgate"}} duration_ms=0 error=nil
+  #5 tool="article_list" ok=false args={"where":{"internal_notes":"unpublished draft, do not expose"}} duration_ms=0 error="where: \"internal_notes\" is not a filterable attribute (allowed: title)"
+```
+
+Note `#3` and `#5`: an `isError` tool result and an `authorize` denial are
+both `ok=false` rows with a real `error` message - the audit trail covers
+rejected calls, not just successful ones.
+
+`ActsAsMcp::AuditLog`/`ActiveRecordAuditSink` are only defined once
+ActiveRecord is already loaded (`lib/acts_as_mcp.rb` requires
+`acts_as_mcp/audit_log` conditionally on `defined?(::ActiveRecord::Base)`,
+the same pattern the Rails engine shim already used) - the core gem stays
+zero-runtime-dependency either way.
+
 ## Benchmark: per-request dispatch overhead
 
 `bench/throughput_bench.rb` times real `tools/call` round trips through
@@ -136,16 +185,26 @@ stream, no sessions — the spec's plain-JSON response mode.
   tools; runs with zero gems (`ruby -Ilib -Itest test/server_core_test.rb`).
 - `test/model_test.rb` — ActiveRecord integration (sqlite3 in-memory):
   exposure filtering, pagination, clamping, not-found semantics.
+- `test/audit_log_test.rb` — `ActiveRecordAuditSink` against a real
+  sqlite3 in-memory `acts_as_mcp_audit_logs` table: success/error/denial
+  events all persisted correctly, and persistence failures never raise
+  into the request.
+- `test/generators/audit_log_generator_test.rb` — `rails generate
+  acts_as_mcp:audit_log` via `Rails::Generators::TestCase`: the migration
+  lands under `db/migrate` with a timestamp prefix, defines the expected
+  columns/indexes, and (the real test, not just a content match) actually
+  runs against a live sqlite3 database and creates the table.
 - `examples/` and `bench/` run for real in CI too (not just committed as
   static text) - `examples/plain_tools.rb` and `bench/throughput_bench.rb`
-  in the zero-gems job, `examples/activerecord_model.rb` in the
-  ActiveRecord job.
+  in the zero-gems job, `examples/activerecord_model.rb` (now also
+  exercising `ActiveRecordAuditSink`) in the ActiveRecord job.
 
 ## Roadmap
 
 - ~~`where:` filters with an allowlist~~ - shipped 0.2.0, see above.
-- v0.3: opt-in write tools with per-tool policies, AR-backed audit-log
-  table + migration generator, Rails engine generators.
+- ~~AR-backed audit-log table + migration generator~~ - shipped 0.3.0,
+  see "Persisting audit events with ActiveRecord" above.
+- v0.4: opt-in write tools with per-tool policies.
 - Rails engine class exists today but is a thin shim; mounting the Rack
   app is the supported path.
 
