@@ -1,0 +1,17 @@
+class CreateActsAsMcpAuditLogs < ActiveRecord::Migration[<%= ActiveRecord::Migration.current_version %>]
+  def change
+    create_table :acts_as_mcp_audit_logs do |t|
+      t.string :tool, null: false
+      t.text :args
+      t.boolean :ok, null: false
+      t.integer :duration_ms
+      t.text :error
+      t.datetime :occurred_at, null: false
+
+      t.timestamps
+    end
+
+    add_index :acts_as_mcp_audit_logs, :tool
+    add_index :acts_as_mcp_audit_logs, :occurred_at
+  end
+end
