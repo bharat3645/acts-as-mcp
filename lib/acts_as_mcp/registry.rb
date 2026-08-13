@@ -1,5 +1,5 @@
 module ActsAsMcp
-  Tool = Struct.new(:name, :description, :input_schema, :handler, keyword_init: true)
+  Tool = Struct.new(:name, :description, :input_schema, :handler)
 
   class Registry
     def initialize

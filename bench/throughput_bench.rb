@@ -19,16 +19,16 @@ N = (ARGV[0] || 5000).to_i
 ActsAsMcp.registry.register(ActsAsMcp::Tool.new(
   name: "echo",
   description: "echo back",
-  input_schema: { "type" => "object" },
-  handler: ->(args) { { "echo" => args } }
+  input_schema: {"type" => "object"},
+  handler: ->(args) { {"echo" => args} }
 ))
 
 server = ActsAsMcp::Server.new
-payload = JSON.generate({ jsonrpc: "2.0", id: 1, method: "tools/call",
-                           params: { name: "echo", arguments: { text: "bench" } } })
+payload = JSON.generate({jsonrpc: "2.0", id: 1, method: "tools/call",
+                           params: {name: "echo", arguments: {text: "bench"}}})
 
 def call_once(server, payload)
-  env = { "REQUEST_METHOD" => "POST", "rack.input" => StringIO.new(payload) }
+  env = {"REQUEST_METHOD" => "POST", "rack.input" => StringIO.new(payload)}
   server.call(env)
 end
 
@@ -50,5 +50,5 @@ p99 = samples[(samples.size * 0.99).to_i]
 
 puts "acts_as_mcp in-process tools/call dispatch: #{N} calls"
 puts format("  mean=%.4fms  median=%.4fms  p95=%.4fms  p99=%.4fms  min=%.4fms  max=%.4fms",
-            mean, median, p95, p99, samples.first, samples.last)
+  mean, median, p95, p99, samples.first, samples.last)
 puts format("  throughput: ~%.0f calls/sec (single-threaded, in-process)", 1000.0 / mean)

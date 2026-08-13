@@ -18,7 +18,7 @@ module ActsAsMcp
 
       def create_migration_file
         migration_template "create_acts_as_mcp_audit_logs.rb.tt",
-                            File.join(db_migrate_path, "create_acts_as_mcp_audit_logs.rb")
+          File.join(db_migrate_path, "create_acts_as_mcp_audit_logs.rb")
       end
     end
   end

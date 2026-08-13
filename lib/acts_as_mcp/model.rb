@@ -28,8 +28,8 @@ module ActsAsMcp
       leaked = filterable - exposed
       unless leaked.empty?
         raise ArgumentError,
-              "acts_as_mcp where: #{leaked.inspect} must also be listed in expose: " \
-              "(filtering on a non-exposed attribute is a side channel)"
+          "acts_as_mcp where: #{leaked.inspect} must also be listed in expose: " \
+          "(filtering on a non-exposed attribute is a side channel)"
       end
 
       base = ActsAsMcp.tool_base_name(model.name)
@@ -41,9 +41,9 @@ module ActsAsMcp
           input_schema: {
             "type" => "object",
             "properties" => {
-              "id" => { "type" => "integer", "description" => "primary key" },
+              "id" => {"type" => "integer", "description" => "primary key"}
             },
-            "required" => ["id"],
+            "required" => ["id"]
           },
           handler: lambda do |args|
             record = model.find_by(model.primary_key => args["id"])
@@ -56,25 +56,25 @@ module ActsAsMcp
 
       if list
         list_properties = {
-          "limit" => { "type" => "integer", "minimum" => 1, "maximum" => 100 },
-          "offset" => { "type" => "integer", "minimum" => 0 },
+          "limit" => {"type" => "integer", "minimum" => 1, "maximum" => 100},
+          "offset" => {"type" => "integer", "minimum" => 0}
         }
         unless filterable.empty?
           list_properties["where"] = {
             "type" => "object",
             "description" => "Exact-match filters. Allowed keys: #{filterable.join(", ")}.",
             "additionalProperties" => false,
-            "properties" => filterable.to_h { |f| [f, { "type" => %w[string integer number boolean null] }] },
+            "properties" => filterable.to_h { |f| [f, {"type" => %w[string integer number boolean null]}] }
           }
         end
 
         ActsAsMcp.registry.register(Tool.new(
           name: "#{base}_list",
           description: "List #{base} records (read-only, paginated" \
-                       "#{filterable.empty? ? "" : ", filterable on #{filterable.join(", ")}"})",
+                       "#{", filterable on #{filterable.join(", ")}" unless filterable.empty?})",
           input_schema: {
             "type" => "object",
-            "properties" => list_properties,
+            "properties" => list_properties
           },
           handler: lambda do |args|
             limit = (args["limit"] || 25).to_i.clamp(1, 100)
@@ -103,7 +103,7 @@ module ActsAsMcp
             end
 
             scope.limit(limit).offset(offset)
-                 .map { |record| record.attributes.slice(*exposed) }
+              .map { |record| record.attributes.slice(*exposed) }
           end
         ))
       end
@@ -115,8 +115,8 @@ module ActsAsMcp
   # "Admin::BlogPost" -> "admin_blog_post" without an ActiveSupport dependency.
   def self.tool_base_name(class_name)
     class_name.gsub("::", "_")
-              .gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
-              .gsub(/([a-z\d])([A-Z])/, '\1_\2')
-              .downcase
+      .gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+      .gsub(/([a-z\d])([A-Z])/, '\1_\2')
+      .downcase
   end
 end

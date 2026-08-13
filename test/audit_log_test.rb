@@ -31,13 +31,13 @@ class AuditLogTest < Minitest::Test
     ActsAsMcp.registry.register(ActsAsMcp::Tool.new(
       name: "echo",
       description: "echo back",
-      input_schema: { "type" => "object" },
-      handler: ->(args) { { "echo" => args } }
+      input_schema: {"type" => "object"},
+      handler: ->(args) { {"echo" => args} }
     ))
     ActsAsMcp.registry.register(ActsAsMcp::Tool.new(
       name: "boom",
       description: "always fails (expected failure path)",
-      input_schema: { "type" => "object" },
+      input_schema: {"type" => "object"},
       handler: ->(_args) { raise ActsAsMcp::ToolError, "kaput" }
     ))
     ActsAsMcp.config.audit_sink = ActsAsMcp::ActiveRecordAuditSink.new
@@ -45,20 +45,20 @@ class AuditLogTest < Minitest::Test
   end
 
   def test_successful_call_is_persisted
-    post_rpc(@server, { jsonrpc: "2.0", id: 1, method: "tools/call",
-                         params: { name: "echo", arguments: { "city" => "Austin" } } })
+    post_rpc(@server, {jsonrpc: "2.0", id: 1, method: "tools/call",
+                         params: {name: "echo", arguments: {"city" => "Austin"}}})
     log = ActsAsMcp::AuditLog.last
     assert_equal "echo", log.tool
     assert log.ok
     assert_nil log.error
     assert_kind_of Integer, log.duration_ms
-    assert_equal({ "city" => "Austin" }, JSON.parse(log.args))
+    assert_equal({"city" => "Austin"}, JSON.parse(log.args))
     assert (Time.now.utc - log.occurred_at).abs < 5
   end
 
   def test_tool_error_is_persisted_with_ok_false_and_error_message
-    post_rpc(@server, { jsonrpc: "2.0", id: 2, method: "tools/call",
-                         params: { name: "boom", arguments: {} } })
+    post_rpc(@server, {jsonrpc: "2.0", id: 2, method: "tools/call",
+                         params: {name: "boom", arguments: {}}})
     log = ActsAsMcp::AuditLog.last
     assert_equal "boom", log.tool
     refute log.ok
@@ -67,8 +67,8 @@ class AuditLogTest < Minitest::Test
 
   def test_authorization_denial_is_persisted_without_a_duration
     ActsAsMcp.config.authorize = ->(_env, _tool, _args) { false }
-    post_rpc(@server, { jsonrpc: "2.0", id: 3, method: "tools/call",
-                         params: { name: "echo", arguments: {} } })
+    post_rpc(@server, {jsonrpc: "2.0", id: 3, method: "tools/call",
+                         params: {name: "echo", arguments: {}}})
     log = ActsAsMcp::AuditLog.last
     refute log.ok
     assert_equal "not authorized", log.error
@@ -76,17 +76,17 @@ class AuditLogTest < Minitest::Test
   end
 
   def test_multiple_calls_accumulate_independent_rows
-    post_rpc(@server, { jsonrpc: "2.0", id: 4, method: "tools/call",
-                         params: { name: "echo", arguments: { "a" => 1 } } })
-    post_rpc(@server, { jsonrpc: "2.0", id: 5, method: "tools/call",
-                         params: { name: "echo", arguments: { "a" => 2 } } })
+    post_rpc(@server, {jsonrpc: "2.0", id: 4, method: "tools/call",
+                         params: {name: "echo", arguments: {"a" => 1}}})
+    post_rpc(@server, {jsonrpc: "2.0", id: 5, method: "tools/call",
+                         params: {name: "echo", arguments: {"a" => 2}}})
     assert_equal 2, ActsAsMcp::AuditLog.count
   end
 
   def test_sink_never_raises_into_the_request_when_persistence_fails
     ActsAsMcp::AuditLog.stub(:create!, ->(*) { raise "db unavailable" }) do
-      status, _headers, msg = post_rpc(@server, { jsonrpc: "2.0", id: 6, method: "tools/call",
-                                                   params: { name: "echo", arguments: {} } })
+      status, _headers, msg = post_rpc(@server, {jsonrpc: "2.0", id: 6, method: "tools/call",
+                                                   params: {name: "echo", arguments: {}}})
       assert_equal 200, status
       refute msg["result"]["isError"]
     end

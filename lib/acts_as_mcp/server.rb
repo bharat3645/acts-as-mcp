@@ -10,7 +10,7 @@ module ActsAsMcp
   #   mount ActsAsMcp::Server.new => "/mcp"   # Rails routes.rb
   class Server
     PROTOCOL_VERSION = "2025-06-18".freeze
-    JSON_HEADERS = { "content-type" => "application/json" }.freeze
+    JSON_HEADERS = {"content-type" => "application/json"}.freeze
 
     def call(env)
       return plain(405, "POST only") unless env["REQUEST_METHOD"] == "POST"
@@ -45,11 +45,11 @@ module ActsAsMcp
     def initialize_result
       {
         "protocolVersion" => PROTOCOL_VERSION,
-        "capabilities" => { "tools" => {} },
+        "capabilities" => {"tools" => {}},
         "serverInfo" => {
           "name" => ActsAsMcp.config.server_name,
-          "version" => ActsAsMcp.config.server_version,
-        },
+          "version" => ActsAsMcp.config.server_version
+        }
       }
     end
 
@@ -58,10 +58,10 @@ module ActsAsMcp
         {
           "name" => tool.name,
           "description" => tool.description,
-          "inputSchema" => tool.input_schema,
+          "inputSchema" => tool.input_schema
         }
       end
-      { "tools" => tools }
+      {"tools" => tools}
     end
 
     def tools_call(env, id, params)
@@ -80,27 +80,27 @@ module ActsAsMcp
         value = tool.handler.call(args)
         audit(name, args, ok: true, duration_ms: clock_ms - started)
         rpc_result(id, {
-          "content" => [{ "type" => "text", "text" => JSON.generate(value) }],
-          "isError" => false,
+          "content" => [{"type" => "text", "text" => JSON.generate(value)}],
+          "isError" => false
         })
       rescue ToolError => e
         audit(name, args, ok: false, duration_ms: clock_ms - started, error: e.message)
         rpc_result(id, error_content(e.message))
-      rescue StandardError => e
+      rescue => e
         audit(name, args, ok: false, duration_ms: clock_ms - started,
-                          error: "#{e.class}: #{e.message}")
+          error: "#{e.class}: #{e.message}")
         rpc_result(id, error_content("internal error in #{name}"))
       end
     end
 
     def error_content(text)
-      { "content" => [{ "type" => "text", "text" => text }], "isError" => true }
+      {"content" => [{"type" => "text", "text" => text}], "isError" => true}
     end
 
     def audit(tool, args, **fields)
-      event = { tool: tool, args: args, at: Time.now.utc.iso8601 }.merge(fields)
+      event = {tool: tool, args: args, at: Time.now.utc.iso8601}.merge(fields)
       ActsAsMcp.config.audit_sink.call(event)
-    rescue StandardError
+    rescue
       nil # an audit sink must never take the endpoint down
     end
 
@@ -109,11 +109,11 @@ module ActsAsMcp
     end
 
     def rpc_result(id, result)
-      respond(200, { "jsonrpc" => "2.0", "id" => id, "result" => result })
+      respond(200, {"jsonrpc" => "2.0", "id" => id, "result" => result})
     end
 
     def rpc_error(id, code, message)
-      respond(200, { "jsonrpc" => "2.0", "id" => id, "error" => { "code" => code, "message" => message } })
+      respond(200, {"jsonrpc" => "2.0", "id" => id, "error" => {"code" => code, "message" => message}})
     end
 
     def respond(status, payload)
@@ -121,7 +121,7 @@ module ActsAsMcp
     end
 
     def plain(status, text)
-      [status, { "content-type" => "text/plain" }, [text]]
+      [status, {"content-type" => "text/plain"}, [text]]
     end
   end
 end

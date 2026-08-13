@@ -34,7 +34,7 @@ module ActsAsMcp
         error: event[:error],
         occurred_at: event[:at] ? Time.parse(event[:at].to_s) : Time.now.utc
       )
-    rescue StandardError
+    rescue
       nil
     end
   end
