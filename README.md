@@ -5,6 +5,34 @@
 Expose a Rails app as a **policy-aware, read-only MCP server** — serve your
 app *to* agents safely, instead of building agents in Ruby.
 
+> **Read-only by design:** v0.1/v0.2 intentionally ship only `_get`/`_list`
+> tools — there is no write surface yet. This is a deliberate safety
+> default, not a missing feature; see [Design decisions](#design-decisions)
+> below for the reasoning, and the [Roadmap](#roadmap) for opt-in write
+> tools.
+
+## Installation
+
+Add this line to your application's Gemfile:
+
+```ruby
+gem "acts_as_mcp"
+```
+
+And then run:
+
+```bash
+bundle install
+```
+
+Or install it yourself as:
+
+```bash
+gem install acts_as_mcp
+```
+
+## Usage
+
 ```ruby
 # app/models/article.rb
 class Article < ApplicationRecord

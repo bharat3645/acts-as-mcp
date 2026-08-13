@@ -46,3 +46,14 @@ jobs:
         with:
           ruby-version: '3.3'
       - run: gem build acts_as_mcp.gemspec
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+      - name: Style check (standardrb)
+        run: bundle exec standardrb

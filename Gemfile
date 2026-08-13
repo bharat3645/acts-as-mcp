@@ -8,4 +8,5 @@ group :development, :test do
   gem "railties", "~> 7.1" # Rails::Generators::TestCase, for the audit_log generator test
   gem "rake", "~> 13.0"
   gem "sqlite3", "~> 1.7"
+  gem "standard"
 end
