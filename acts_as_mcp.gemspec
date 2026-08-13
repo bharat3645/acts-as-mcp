@@ -18,6 +18,12 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
   spec.metadata["rubygems_mfa_required"] = "true"
 
-  spec.files = Dir["lib/**/*.rb", "README.md", "CHANGELOG.md", "LICENSE"]
+  # lib/generators/**/*.tt separately: the migration ERB template's `.tt`
+  # extension (Rails' own convention, keeps generator templates from being
+  # parsed as plain Ruby) doesn't match "lib/**/*.rb" and was silently
+  # missing from the packaged gem without this - `rails generate
+  # acts_as_mcp:audit_log` would fail for anyone installing the released
+  # gem, not just repo clones.
+  spec.files = Dir["lib/**/*.rb", "lib/generators/**/*.tt", "README.md", "CHANGELOG.md", "LICENSE"]
   spec.require_paths = ["lib"]
 end
