@@ -5,6 +5,7 @@ require_relative "acts_as_mcp/registry"
 require_relative "acts_as_mcp/model"
 require_relative "acts_as_mcp/server"
 require_relative "acts_as_mcp/engine" if defined?(::Rails::Engine)
+require_relative "acts_as_mcp/audit_log" if defined?(::ActiveRecord::Base)
 
 module ActsAsMcp
   def self.config
