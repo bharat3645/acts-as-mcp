@@ -186,6 +186,21 @@ ActiveRecord is already loaded (`lib/acts_as_mcp.rb` requires
 the same pattern the Rails engine shim already used) - the core gem stays
 zero-runtime-dependency either way.
 
+## Demo
+
+A real terminal recording of `examples/activerecord_model.rb` end to end:
+`expose:`/`where:` registering `article_get`/`article_list` automatically,
+a filtered list, a real `ToolError` for a missing id and for a
+disallowed filter key, and every one of those calls landing as a real
+row via `ActiveRecordAuditSink`:
+
+```bash
+asciinema play demo/acts-as-mcp-demo.cast
+```
+
+(local playback - [install asciinema](https://asciinema.org/docs/installation)
+if you don't have it; no account/upload needed.)
+
 ## Benchmark: per-request dispatch overhead
 
 `bench/throughput_bench.rb` times real `tools/call` round trips through

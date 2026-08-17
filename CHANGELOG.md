@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Demo recording** (`demo/acts-as-mcp-demo.cast`, linked from the README): a real asciinema terminal session running `examples/activerecord_model.rb` end to end - `expose:`/`where:` auto-registering `article_get`/`article_list`, a filtered list, a real `ToolError` for a missing id and for a disallowed filter key, and every call landing as a real row via `ActiveRecordAuditSink`. Recorded against the real gem with pinned `Gemfile` versions (`bundle exec`), replayed to confirm before committing.
+
 ## [0.3.0] - 2026-08-13
 
 ### Added
