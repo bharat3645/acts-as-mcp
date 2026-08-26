@@ -45,22 +45,22 @@ below).
 
 ## Installation
 
-Add this line to your application's Gemfile:
+> **Not yet published to RubyGems.** Install from git:
 
 ```ruby
-gem "acts_as_mcp"
+# Gemfile
+gem "acts_as_mcp", github: "bharat3645/acts-as-mcp"
 ```
-
-And then run:
 
 ```bash
 bundle install
 ```
 
-Or install it yourself as:
+Or build and install the gem from a checkout:
 
 ```bash
-gem install acts_as_mcp
+git clone https://github.com/bharat3645/acts-as-mcp && cd acts-as-mcp
+gem build acts_as_mcp.gemspec && gem install acts_as_mcp-*.gem
 ```
 
 ## Usage
@@ -279,6 +279,7 @@ stream, no sessions — the spec's plain-JSON response mode.
 - ~~`where:` filters with an allowlist~~ - shipped 0.2.0, see above.
 - ~~AR-backed audit-log table + migration generator~~ - shipped 0.3.0,
   see "Persisting audit events with ActiveRecord" above.
+- RubyGems publication.
 - v0.4: opt-in write tools with per-tool policies.
 - Rails engine class exists today but is a thin shim; mounting the Rack
   app is the supported path.
