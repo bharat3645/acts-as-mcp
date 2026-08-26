@@ -11,6 +11,38 @@ app *to* agents safely, instead of building agents in Ruby.
 > below for the reasoning, and the [Roadmap](#roadmap) for opt-in write
 > tools.
 
+## How a call flows through the gem
+
+```mermaid
+sequenceDiagram
+    participant Client as MCP client
+    participant Server as ActsAsMcp::Server
+    participant Auth as authorize hook
+    participant Model as Article (expose: [...])
+    participant Audit as audit_sink
+
+    Client->>Server: tools/call article_get(id: 1)
+    Server->>Auth: authorize.(env, tool, args)
+    alt denied
+        Auth-->>Server: false
+        Server->>Audit: audit(ok: false, error: "denied")
+        Server-->>Client: isError tool result
+    else allowed
+        Auth-->>Server: true
+        Server->>Model: load record, serialize only expose: attrs
+        Model-->>Server: {id, title, body}
+        Server->>Audit: audit(ok: true, duration_ms)
+        Server-->>Client: tool result (exposed attrs only)
+    end
+```
+
+Every call passes through the same three gates regardless of outcome:
+the `authorize` hook decides in or out, only attributes named in
+`expose:` ever leave the model, and `audit_sink` sees every call —
+denials and errors included, not just successes (see the real captured
+output in [Persisting audit events with ActiveRecord](#persisting-audit-events-with-activerecord)
+below).
+
 ## Installation
 
 Add this line to your application's Gemfile:
