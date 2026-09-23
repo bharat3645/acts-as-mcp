@@ -65,8 +65,12 @@ module ActsAsMcp
     end
 
     def tools_call(env, id, params)
+      return rpc_error(id, -32602, "Invalid params: expected an object") unless params.is_a?(Hash)
+
       name = params["name"].to_s
       args = params["arguments"] || {}
+      return rpc_error(id, -32602, "Invalid params: \"arguments\" must be an object") unless args.is_a?(Hash)
+
       tool = ActsAsMcp.registry.find(name)
       return rpc_error(id, -32602, "Unknown tool: #{name.inspect}") unless tool
 

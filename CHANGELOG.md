@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Fixed
+- `tools/call` with a non-object `params` (e.g. an integer, array, or
+  boolean) raised an uncaught `TypeError`/`NoMethodError` out of
+  `Server#call` instead of returning a JSON-RPC `-32602` error — a
+  malformed or adversarial request could crash the Rack mount point
+  entirely, contradicting this gem's own "never a 500, always a
+  controlled error" design (see the README's own call-flow examples).
+  `params` and `arguments` are now validated as objects before any field
+  access; both cases return `-32602` with a descriptive message instead.
+  2 new tests in `test/server_core_test.rb` cover the reproduced crash
+  shapes (`5`, `[]`, `true`, `"oops"` as `params`; a non-object
+  `arguments`).
+
 ### Added
 - **Demo recording** (`demo/acts-as-mcp-demo.cast`, linked from the README): a real asciinema terminal session running `examples/activerecord_model.rb` end to end - `expose:`/`where:` auto-registering `article_get`/`article_list`, a filtered list, a real `ToolError` for a missing id and for a disallowed filter key, and every call landing as a real row via `ActiveRecordAuditSink`. Recorded against the real gem with pinned `Gemfile` versions (`bundle exec`), replayed to confirm before committing.
 

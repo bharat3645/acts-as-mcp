@@ -105,6 +105,19 @@ class ServerCoreTest < Minitest::Test
     assert_equal(-32601, msg["error"]["code"])
   end
 
+  def test_non_object_params_is_a_protocol_error_not_a_crash
+    [5, [], true, "oops"].each do |bad_params|
+      _, _, msg = post_rpc(@server, {jsonrpc: "2.0", id: 11, method: "tools/call", params: bad_params})
+      assert_equal(-32602, msg["error"]["code"], "params=#{bad_params.inspect} should not crash")
+    end
+  end
+
+  def test_non_object_arguments_is_a_protocol_error_not_a_crash
+    _, _, msg = post_rpc(@server, {jsonrpc: "2.0", id: 12, method: "tools/call",
+                                    params: {name: "echo", arguments: [1, 2]}})
+    assert_equal(-32602, msg["error"]["code"])
+  end
+
   def test_authorization_denial_is_audited
     events = []
     ActsAsMcp.config.audit_sink = ->(event) { events << event }
