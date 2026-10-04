@@ -51,7 +51,7 @@ module ActsAsMcp
 
             record.attributes.slice(*exposed)
           end
-        ))
+        ), source: model.name)
       end
 
       if list
@@ -105,7 +105,7 @@ module ActsAsMcp
             scope.limit(limit).offset(offset)
               .map { |record| record.attributes.slice(*exposed) }
           end
-        ))
+        ), source: model.name)
       end
 
       nil

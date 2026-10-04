@@ -3,6 +3,22 @@
 ## [Unreleased]
 
 ### Fixed
+- `Registry#register` silently overwrote a tool whenever two different
+  models decamelized to the same base name (`tool_base_name` strips `::`
+  without namespacing, so e.g. `Admin::BlogPost` and `AdminBlog::Post`
+  both became `admin_blog_post`). One model's `_get`/`_list` tools would
+  silently vanish or start serving the other model's data, with no error
+  or warning anywhere - a real footgun for a gem whose whole pitch is
+  explicit, auditable exposure. `acts_as_mcp` now passes the model's class
+  name as the tool's registration `source`; re-registering under the
+  *same* source (what Rails class reloading in development does on every
+  reload) still silently replaces the old tool, but a *different* source
+  claiming an already-registered name now raises a descriptive
+  `ArgumentError` naming both colliding classes. 2 new tests in
+  `test/model_test.rb`: same-model re-registration still doesn't raise,
+  and two distinct classes colliding on the same base name does, with the
+  error message checked for both class names and the tool name.
+
 - `tools/call` with a non-object `params` (e.g. an integer, array, or
   boolean) raised an uncaught `TypeError`/`NoMethodError` out of
   `Server#call` instead of returning a JSON-RPC `-32602` error — a

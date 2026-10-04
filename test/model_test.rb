@@ -148,4 +148,40 @@ class ModelTest < Minitest::Test
     rows = JSON.parse(msg["result"]["content"].first["text"])
     assert_equal 2, rows.size
   end
+
+  def test_reregistering_the_same_model_does_not_raise
+    # Rails class reloading in development re-runs `acts_as_mcp` for the
+    # same model on every reload - this must stay silent, not raise.
+    Article.acts_as_mcp(expose: %i[id title])
+    Article.acts_as_mcp(expose: %i[id title body])
+    tool = ActsAsMcp.registry.find("article_get")
+    refute_nil tool
+  end
+
+  def test_two_distinct_models_colliding_on_the_same_base_name_raises
+    # tool_base_name decamelizes without namespacing, so `AdminBlog::Post`
+    # and `Admin::BlogPost` both map to "admin_blog_post" - without a
+    # collision check, one model's tool would silently vanish or start
+    # serving the other model's data with no error at all.
+    admin_blog_post = Class.new(ActiveRecord::Base) do
+      self.table_name = "articles"
+      extend ActsAsMcp::Model
+
+      def self.name = "Admin::BlogPost"
+    end
+    another_admin_blog_post = Class.new(ActiveRecord::Base) do
+      self.table_name = "articles"
+      extend ActsAsMcp::Model
+
+      def self.name = "AdminBlog::Post"
+    end
+
+    admin_blog_post.acts_as_mcp(expose: %i[id title])
+    err = assert_raises(ArgumentError) do
+      another_admin_blog_post.acts_as_mcp(expose: %i[id title])
+    end
+    assert_match(/admin_blog_post_get/, err.message)
+    assert_match(/Admin::BlogPost/, err.message)
+    assert_match(/AdminBlog::Post/, err.message)
+  end
 end
