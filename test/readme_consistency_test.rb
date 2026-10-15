@@ -28,4 +28,4 @@ class ReadmeConsistencyTest < Minitest::Test
       "README's plain_tools.rb output block has drifted from the real script output - " \
       "re-run `ruby -Ilib examples/plain_tools.rb` and paste the real output"
   end
- end
+end
