@@ -117,7 +117,10 @@ sequence against the real `Server` class. Real, unedited output
 
 ```
 --> {"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
-<-- {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"acts_as_mcp","version":"0.1.0"}}}
+<-- {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{}},"serverInfo":{"name":"acts_as_mcp","version":"0.3.0"}}}
+
+--> {"jsonrpc":"2.0","id":2,"method":"tools/list"}
+<-- {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"divide","description":"Divide two numbers.","inputSchema":{"type":"object","properties":{"a":{"type":"number"},"b":{"type":"number"}}}},{"name":"weather_lookup","description":"Look up the current weather for a city.","inputSchema":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}}]}}
 
 --> {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"weather_lookup","arguments":{"city":"Austin"}}}
 <-- {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\"city\":\"Austin\",\"condition\":\"sunny\",\"temp_f\":72}"}],"isError":false}}
@@ -125,6 +128,10 @@ sequence against the real `Server` class. Real, unedited output
 # Calling divide with b: 0 - a real ToolError, not a crash:
 --> {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"divide","arguments":{"a":10,"b":0}}}
 <-- {"jsonrpc":"2.0","id":4,"result":{"content":[{"type":"text","text":"cannot divide by zero"}],"isError":true}}
+
+# Calling an unregistered tool - JSON-RPC -32602, not a 500:
+--> {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"nonexistent_tool","arguments":{}}}
+<-- {"jsonrpc":"2.0","id":5,"error":{"code":-32602,"message":"Unknown tool: \"nonexistent_tool\""}}
 ```
 
 `examples/activerecord_model.rb` is the same idea for the `expose:`
@@ -269,6 +276,9 @@ stream, no sessions — the spec's plain-JSON response mode.
   lands under `db/migrate` with a timestamp prefix, defines the expected
   columns/indexes, and (the real test, not just a content match) actually
   runs against a live sqlite3 database and creates the table.
+- `test/readme_consistency_test.rb` — runs `examples/plain_tools.rb` for
+  real and diffs its output against this README's documented transcript,
+  so the two can't silently drift apart again.
 - `examples/` and `bench/` run for real in CI too (not just committed as
   static text) - `examples/plain_tools.rb` and `bench/throughput_bench.rb`
   in the zero-gems job, `examples/activerecord_model.rb` (now also
